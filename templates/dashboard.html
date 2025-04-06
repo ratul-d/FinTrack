@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Financial Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    html {
+      zoom: 100%;
+      transform: scale(0.85);
+      transform-origin: top center;
+    }
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: rgba(243, 244, 246, 0.5);
+      border-radius: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.5);
+      border-radius: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(107, 114, 128, 0.7);
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-indigo-50 min-h-screen p-8">
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <header class="mb-8 flex justify-between items-center glass-panel p-6 rounded-2xl shadow-sm">
+      <a href="/">
+        <div class="flex items-center space-x-4">
+          <div class="p-3 bg-indigo-600 rounded-xl shadow-lg">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <h1 class="text-2xl font-bold text-gray-800">Financial Dashboard</h1>
+        </div>
+        <a href="{{ url_for('logout') }}" class="text-sm text-gray-600 hover:text-gray-800">Logout</a>
+      </a>
+
+    </header>
+
+    <!-- Notifications -->
+    <div class="mb-8 space-y-3">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            {% if category not in ['success', 'danger', 'warning'] %}
+              <div class="p-4 rounded-xl flex items-start space-x-3 {{ 'bg-emerald-50 border-emerald-100' if category=='success' else 'bg-rose-50 border-rose-100' }}">
+                <div class="flex-1 text-sm {{ 'text-emerald-700' if category=='success' else 'text-rose-700' }}">{{ message }}</div>
+              </div>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      {% if alerts %}
+        {% for alert in alerts %}
+          <div class="p-4 rounded-xl flex items-start space-x-3 bg-amber-50 border-amber-100">
+            <div class="flex-1 text-sm text-amber-700">{{ alert }}</div>
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div class="glass-panel p-6 rounded-xl">
+        <div class="text-sm text-gray-500 mb-1">Total Balance</div>
+        <div class="text-2xl font-bold text-gray-800">₹{{ "%.2f"|format(net_savings) }}</div>
+        <div class="text-sm mt-2">
+          <span class="{{ 'text-emerald-600' if net_savings>=0 else 'text-rose-600' }}">
+            {{ '+₹%.2f'|format(net_income) if net_savings>=0 else '-₹%.2f'|format(net_expenses) }}
+          </span> this month
+        </div>
+      </div>
+      <div class="glass-panel p-6 rounded-xl">
+        <div class="text-sm text-gray-500 mb-1">Income</div>
+        <div class="text-2xl font-bold text-emerald-600">₹{{ "%.2f"|format(net_income) }}</div>
+      </div>
+      <div class="glass-panel p-6 rounded-xl">
+        <div class="text-sm text-gray-500 mb-1">Expenses</div>
+        <div class="text-2xl font-bold text-rose-600">₹{{ "%.2f"|format(net_expenses) }}</div>
+      </div>
+    </div>
+
+    <!-- Add & Recent Transactions Side by Side -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+      <!-- Add Transaction -->
+      <div class="glass-panel p-6 rounded-xl flex flex-col">
+        <h2 class="text-lg font-semibold mb-6">Add Transaction</h2>
+        <form action="{{ url_for('add_transaction') }}" method="POST" class="space-y-4 flex-1 flex flex-col">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Type</label>
+              <select name="transaction_type" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">Amount</label>
+              <input type="number" step="0.01" name="amount" required
+                     class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">Date</label>
+              <input type="date" name="date" value="{{ default_date }}" required
+                     class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">Category</label>
+              <input type="text" name="category" required
+                     class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Description</label>
+            <textarea name="description" rows="2"
+                      class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500"></textarea>
+          </div>
+          <div class="flex items-center space-x-2">
+            <input type="checkbox" id="recurring-checkbox" name="recurring"
+                   class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"/>
+            <label for="recurring-checkbox" class="text-sm font-medium text-gray-700">Recurring?</label>
+          </div>
+          <div id="frequency-field" class="mt-4 hidden">
+            <label for="frequency" class="block text-sm font-medium mb-2">Frequency</label>
+            <select name="frequency" id="frequency"
+                    class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+          <button type="submit" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg transition-all">
+            Add Transaction
+          </button>
+        </form>
+      </div>
+
+      <!-- Recent Transactions -->
+      <div class="glass-panel p-6 rounded-xl flex flex-col">
+        <h2 class="text-lg font-semibold mb-6">Transactions</h2>
+        <div class="overflow-y-auto custom-scroll max-h-[400px]">
+          <div class="space-y-4 pr-2">
+            {% for t in transactions %}
+              <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div>
+                  <div class="font-medium text-sm">{{ t.category }}</div>
+                  <div class="text-xs text-gray-500">{{ t.date.strftime('%b %d') }}</div>
+                  <div class="text-xs {{ 'text-indigo-600' if t.recurring else 'text-gray-500' }}">
+                    {% if t.recurring %}
+                      Recurring ({{ t.frequency.title() }})
+                    {% else %}
+                      One‑time
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="{{ 'text-emerald-600' if t.transaction_type=='income' else 'text-rose-600' }} font-medium">
+                    ₹{{ "%.2f"|format(t.amount) }}
+                  </div>
+                  <div class="text-xs {{ 'text-emerald-500' if t.transaction_type=='income' else 'text-rose-500' }}">
+                    {{ t.transaction_type.title() }}
+                  </div>
+                </div>
+                <form action="{{ url_for('delete_transaction', id=t.id) }}" method="POST">
+                  <button type="submit" class="text-rose-500 hover:text-rose-700">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                  </button>
+                </form>
+              </div>
+            {% else %}
+              <div class="text-center text-gray-500 py-4">No transactions yet</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search, Chart, Budgets & Export -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- Search & Chart Column -->
+      <div class="lg:col-span-2 space-y-8">
+        <!-- Search -->
+        <div class="glass-panel p-6 rounded-xl">
+          <h2 class="text-lg font-semibold mb-6">Search Transactions</h2>
+          <form id="search-form" action="{{ url_for('search') }}#search-results" method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Category</label>
+              <input type="text" name="search_category" value="{{ request.args.get('search_category','') }}"
+                     class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">Type</label>
+              <select name="search_type" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3">
+                <option value="">All</option>
+                <option value="income" {% if request.args.get('search_type')=='income' %}selected{% endif %}>Income</option>
+                <option value="expense" {% if request.args.get('search_type')=='expense' %}selected{% endif %}>Expense</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">Amount Range</label>
+              <div class="flex gap-2">
+                <input type="number" name="min_amount" placeholder="Min" step="0.01"
+                       value="{{ request.args.get('min_amount','') }}"
+                       class="w-full rounded-lg border-2 border-gray-200 px-4 py-3">
+                <input type="number" name="max_amount" placeholder="Max" step="0.01"
+                       value="{{ request.args.get('max_amount','') }}"
+                       class="w-full rounded-lg border-2 border-gray-200 px-4 py-3">
+              </div>
+            </div>
+            <div class="flex items-end">
+              <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg transition-all">
+                Search
+              </button>
+            </div>
+          </form>
+          <div id="search-results">
+            {% if is_search %}
+              <div class="mt-6">
+                <h3 class="text-lg font-semibold mb-4">Search Results</h3>
+                {% if search_results %}
+                  <div class="space-y-4">
+                    {% for t in search_results %}
+                      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div>
+                          <div class="font-medium text-sm">{{ t.category }}</div>
+                          <div class="text-xs text-gray-500">{{ t.date.strftime('%b %d') }}</div>
+                        </div>
+                        <div class="text-right">
+                          <div class="{{ 'text-emerald-600' if t.transaction_type=='income' else 'text-rose-600' }} font-medium">
+                            ₹{{ "%.2f"|format(t.amount) }}
+                          </div>
+                          <div class="text-xs {{ 'text-emerald-500' if t.transaction_type=='income' else 'text-rose-500' }}">
+                            {{ t.transaction_type.title() }}
+                          </div>
+                        </div>
+                        <form action="{{ url_for('delete_transaction', id=t.id) }}" method="POST">
+                          <button type="submit" class="text-rose-500 hover:text-rose-700">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                          </button>
+                        </form>
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div class="text-center text-gray-500 py-4">No transactions found</div>
+                {% endif %}
+                <div class="mt-4">
+                  <button onclick="window.location='{{ url_for('index') }}'"
+                          class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition">
+                    Clear Results
+                  </button>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Spending Chart -->
+        <div class="glass-panel p-6 rounded-xl">
+          <h2 class="text-lg font-semibold mb-6">Spending Breakdown</h2>
+          <div class="w-full" style="height:650px;">
+            <canvas id="categorySpendingChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Budgets & Export Column -->
+      <div class="space-y-8">
+        <!-- Budgets -->
+        <div class="glass-panel p-6 rounded-xl">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-lg font-semibold">Budgets</h2>
+            <button onclick="openBudgetsModal()" class="text-indigo-600 hover:text-indigo-700 text-sm">Manage →</button>
+          </div>
+          <div class="space-y-4">
+            {% for budget in budgets %}
+              <div class="space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span>{{ budget.category }}</span>
+                  <span>₹{{ "%.2f"|format(budget.limit) }}</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                  <div class="bg-indigo-600 h-2 rounded-full" style="width:45%"></div>
+                </div>
+              </div>
+            {% else %}
+              <div class="text-center text-gray-500 py-2">No budgets set</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Export -->
+        <div class="glass-panel p-6 rounded-xl">
+          <h2 class="text-lg font-semibold mb-6">Export Reports</h2>
+          <div class="grid grid-cols-2 gap-4">
+            <a href="{{ url_for('export_csv') }}"
+               class="p-4 bg-emerald-100 rounded-lg hover:bg-emerald-200 text-center">
+              <div class="text-emerald-600 font-medium">Export CSV</div>
+              <div class="text-xs text-emerald-500 mt-1">Spreadsheet Format</div>
+            </a>
+            <a href="{{ url_for('export_pdf') }}"
+               class="p-4 bg-rose-100 rounded-lg hover:bg-rose-200 text-center">
+              <div class="text-rose-600 font-medium">Export PDF</div>
+              <div class="text-xs text-rose-500 mt-1">Printable Format</div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Budgets Modal -->
+  <div id="budgetsModal" class="hidden fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md">
+      <div class="p-6 border-b flex justify-between items-center">
+        <h3 class="text-lg font-semibold">Manage Budgets</h3>
+        <button onclick="closeBudgetsModal()" class="text-gray-500 hover:text-gray-700">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <form action="{{ url_for('set_budget') }}" method="POST" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Category</label>
+            <input type="text" name="budget_category" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Limit</label>
+            <input type="number" step="0.01" name="budget_limit" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3">
+          </div>
+          <button type="submit" class="w-full bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700">
+            Set Budget
+          </button>
+        </form>
+        <div class="pt-4 border-t">
+          {% for budget in budgets %}
+            <div class="flex items-center justify-between py-3">
+              <div>
+                <div class="font-medium">{{ budget.category }}</div>
+                <div class="text-sm text-gray-500">Limit: ₹{{ "%.2f"|format(budget.limit) }}</div>
+              </div>
+              <form action="{{ url_for('delete_budget', id=budget.id) }}" method="POST">
+                <button type="submit" class="text-rose-500 hover:text-rose-700">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openBudgetsModal() {
+      document.getElementById('budgetsModal').classList.remove('hidden');
+    }
+    function closeBudgetsModal() {
+      document.getElementById('budgetsModal').classList.add('hidden');
+    }
+
+    // Spending Chart
+    new Chart(document.getElementById('categorySpendingChart'), {
+      type: 'doughnut',
+      data: {
+        labels: {{ category_labels|safe }},
+        datasets: [{
+          data: {{ category_data|safe }},
+          backgroundColor: [
+            '#6366f1', '#10b981', '#f59e0b', '#ef4444',
+            '#8b5cf6', '#3b82f6', '#f97316', '#64748b'
+          ],
+          borderWidth: 0,
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { position: 'right' },
+          tooltip: { enabled: true }
+        },
+        cutout: '70%'
+      }
+    });
+
+    // Toggle Recurring Frequency Field
+    const checkbox = document.getElementById('recurring-checkbox');
+    const freqField = document.getElementById('frequency-field');
+    checkbox.addEventListener('change', () => {
+      freqField.classList.toggle('hidden', !checkbox.checked);
+    });
+  </script>
+</body>
+</html>

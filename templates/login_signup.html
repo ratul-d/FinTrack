@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FinTrack - Access Your Account</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .auth-tab.active {
+      border-bottom: 3px solid #6366f1;
+      color: #6366f1;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-indigo-50">
+  <!-- Fixed Header -->
+  <div class="fixed w-full top-0 z-10 bg-gradient-to-br from-gray-50 to-indigo-50">
+    <div class="max-w-7xl mx-auto px-8 w-full">
+      <header class="py-4">
+        <div class="flex items-center space-x-4">
+          <a href="/" class="p-3 bg-indigo-600 rounded-xl shadow-lg">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </a>
+          <span class="text-2xl font-bold text-gray-800">FinTrack</span>
+        </div>
+      </header>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="max-w-7xl mx-auto px-8 w-full pt-16 min-h-screen flex items-center">
+    <!-- Auth Container -->
+    <div class="max-w-md mx-auto glass-panel p-8 rounded-2xl shadow-xl">
+      <div class="mb-6 space-y-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="p-4 rounded-xl flex items-start space-x-3
+                   {{ 'bg-emerald-50 border-emerald-100' if category == 'success' else 'bg-rose-50 border-rose-100' }}">
+                <div class="flex-1 text-sm
+                     {{ 'text-emerald-700' if category == 'success' else 'text-rose-700' }}">
+                  {{ message }}
+                </div>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      </div>
+      <!-- Tabs -->
+      <div class="flex mb-8 border-b">
+        <button onclick="switchTab('login')" id="login-tab" class="auth-tab active flex-1 py-4 font-medium">Login</button>
+        <button onclick="switchTab('signup')" id="signup-tab" class="auth-tab flex-1 py-4 font-medium text-gray-500">Sign Up</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" action="/login" method="POST" class="space-y-6">
+        <div>
+          <label class="block text-sm font-medium mb-2">Email</label>
+          <input type="email" name="email" required
+                 class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Password</label>
+          <input type="password" name="password" required
+                 class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg transition-all">
+          Login to Account
+        </button>
+      </form>
+
+      <!-- Signup Form -->
+      <form id="signup-form" action="/signup" method="POST" class="space-y-6 hidden">
+        <div>
+          <label class="block text-sm font-medium mb-2">Email</label>
+          <input type="email" name="email" required
+                 class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Password</label>
+          <input type="password" name="password" required
+                 class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Confirm Password</label>
+          <input type="password" name="confirm_password" required
+                 class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg transition-all">
+          Create Account
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(formType) {
+      document.querySelectorAll('.auth-tab').forEach(tab => {
+        tab.classList.remove('active');
+        tab.classList.add('text-gray-500');
+      });
+
+      document.getElementById(`${formType}-tab`).classList.add('active');
+      document.getElementById(`${formType}-tab`).classList.remove('text-gray-500');
+
+      document.getElementById('login-form').classList.toggle('hidden', formType !== 'login');
+      document.getElementById('signup-form').classList.toggle('hidden', formType !== 'signup');
+    }
+  </script>
+</body>
+</html>
