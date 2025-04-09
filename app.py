@@ -2,13 +2,13 @@ import os
 import signal
 import sys
 from flask import session
+import base64
 from datetime import datetime, date, timedelta
 from io import BytesIO
 import json
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, make_response
-
 from flask_migrate import Migrate
 import pandas as pd
 from xhtml2pdf import pisa
@@ -439,8 +439,7 @@ def export_csv():
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import base64
-from io import BytesIO
+
 
 
 @app.route("/export/pdf")
@@ -516,7 +515,7 @@ def export_pdf():
         download_name="financial_report.pdf"
     ) if pdf else redirect(url_for("index"))
 
-from apscheduler.schedulers.background import BackgroundScheduler
+
 
 
 def run_recurring_jobs():
@@ -546,20 +545,6 @@ def run_recurring_jobs():
 
         db.session.commit()
 
-
-def handle_shutdown(signum, frame):
-    """Clear all sessions and logout users before shutdown"""
-    with app.app_context():
-        # Invalidate server-side session data
-        session.clear()
-        # Clear all remember-me cookies at database level
-        User.query.update({'password': None})  # Invalidates all auth tokens
-        db.session.commit()
-
-    print("\n\033[91mServer shutting down - All users logged out\033[0m")
-    sys.exit(0)
-signal.signal(signal.SIGINT, handle_shutdown)  # CTRL+C
-signal.signal(signal.SIGTERM, handle_shutdown)
 
 if __name__ == "__main__":
     scheduler = BackgroundScheduler()
