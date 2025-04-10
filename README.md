@@ -42,6 +42,6 @@ Check out the FinTrack UI below:
 
 <img src="https://github.com/user-attachments/assets/78472276-1fda-48e6-806e-d1104613348e" width="900"/>
 
-<img src="https://github.com/user-attachments/assets/7bd69546-3b3b-4a0b-9ebd-a1bfdd7e14cf" width="900"/>
+<img src="https://github.com/user-attachments/assets/d3eecb96-d487-44bc-96d1-cc8baf37bb39" width="900"/>
 
-<img src="https://github.com/user-attachments/assets/0963d57e-2979-4bb0-ad6b-2c0cc2cf18bf" width="900"/>
+<img src="https://github.com/user-attachments/assets/39a78d94-2bc3-4f2c-9977-c199641dc4cc" width="900"/>
